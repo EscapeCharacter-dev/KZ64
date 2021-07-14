@@ -1,6 +1,10 @@
 #include "CPU.hh"
 #include "Cast.hh"
 #include <iostream>
+#include <bitset>
+
+#define LAST(k, n) ((k) & ((1 << (n)) -1))
+#define MID(k, m, n) LAST((k) >> (m), ((n) - (m)))
 
 namespace Kz64
 {
@@ -120,6 +124,65 @@ namespace Kz64
 			{
 				Register &b = GetRegister(Code[ip++]);
 				r = r.Nxor(b);
+			},
+			[this, &ip](Register &r)	// LGP
+			{
+				uint32_t gps = (uint32_t)r;
+				uint32_t mustBeZero0 = MID(gps, 5, 11);
+				if (mustBeZero0)
+				{
+					// TODO: fire Invalid Structure interrupt
+					std::cout << "Invalid General Protection structure: Zero fields are not zero" << std::endl;
+					std::cout << std::bitset<8>(mustBeZero0) << std::endl;
+					Halted = true;
+					return;
+				}
+				GPDescriptor descriptor = gps;
+				if (CurrentGPSelector != 255) // there is a current descriptor
+				{
+					uint32_t structurei = GeneralProtectionStructures[CurrentGPSelector];
+					if (!structurei)
+					{
+						std::cout << "Usage of invalid general protection structure " << CurrentGPSelector << std::endl;
+						Halted = true;
+						return;
+					}
+					GPDescriptor *_descriptor = &(GeneralProtectionStructures[CurrentGPSelector]);
+					if (!_descriptor->PK) // FSA is disabled
+					{
+						std::cout << "Cannot override general protection, PK is disabled" << std::endl;
+						Halted = true;
+						return;
+					}
+					if (descriptor.CS == CurrentGPSelector)
+					{
+						std::cout << "Warning: Destination GP selector is the same as the current one. This will result in a loss of permissions." << std::endl;
+					}
+					if (GeneralProtectionStructures[descriptor.CS])
+					{
+						std::cout << "Cannot override non-parent general protection structure" << std::endl;
+						Halted = true;
+						return;
+					}
+					if (descriptor.PS != CurrentGPSelector)
+					{
+						std::cout << "Parent selector is the same as the current selector" << std::endl;
+						Halted = true;
+						return;
+					}
+				}
+				if (descriptor.CS == 255)
+				{
+					std::cout << "255 is an invalid general protection selector" << std::endl;
+					Halted = true;
+					return;
+				}
+				std::cout << (bool)descriptor.FMA << std::endl;
+				std::cout << (bool)descriptor.FSA << std::endl;
+				std::cout << (bool)descriptor.PK << std::endl;
+				std::cout << (bool)descriptor.IVK << std::endl;
+				std::cout << (bool)descriptor.FE << std::endl;
+				GeneralProtectionStructures[descriptor.CS] = descriptor;
 			},
 		};
 		uint8_t instruction = Code[ip++];

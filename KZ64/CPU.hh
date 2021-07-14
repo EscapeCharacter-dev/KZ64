@@ -27,6 +27,7 @@ namespace Kz64
 		NOr,
 		NAnd,
 		NXor,
+		LGP,	// Load General Protection structure
 	};
 	enum Registers : std::uint8_t
 	{
@@ -64,10 +65,30 @@ namespace Kz64
 		FR,
 		IP,
 	};
+#pragma pack(push, 1)
+	struct GPDescriptor
+	{
+		uint8_t FMA : 1;	// Full memory access
+		uint8_t FSA : 1;	// Full stack access (overriden by FMA)
+		uint8_t PK : 1;		// Permission Fork
+		uint8_t IVK : 1;	// Interrupt Vector Fork
+		uint8_t FE : 1;		// Fork Exit
+		uint8_t UNUSED_ : 3;// unused
+		uint8_t UNUSED : 8;	// unused
+		uint8_t PS;			// Parent Selector
+		uint8_t CS;			// Current Selector (selector for this GP)
+		GPDescriptor(uint32_t rawDescriptor) { assert(sizeof(GPDescriptor) == sizeof(uint32_t));
+		memcpy(this, &rawDescriptor, sizeof(GPDescriptor)); }
+		GPDescriptor() {}
+		operator uint32_t() { uint32_t result; memcpy(&result, this, sizeof(uint32_t)); return result; }
+	};
+#pragma pack(pop)
 	class Kz64
 	{
 	private:
 		Register Registers[32] = {};
+		GPDescriptor GeneralProtectionStructures[256];
+		std::uint8_t CurrentGPSelector = 255;
 		std::vector<std::uint8_t> Code;
 		void Next();
 		bool Halted = false;
