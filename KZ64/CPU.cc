@@ -177,11 +177,6 @@ namespace Kz64
 					Halted = true;
 					return;
 				}
-				std::cout << (bool)descriptor.FMA << std::endl;
-				std::cout << (bool)descriptor.FSA << std::endl;
-				std::cout << (bool)descriptor.PK << std::endl;
-				std::cout << (bool)descriptor.IVK << std::endl;
-				std::cout << (bool)descriptor.FE << std::endl;
 				GeneralProtectionStructures[descriptor.CS] = descriptor;
 			},
 		};
